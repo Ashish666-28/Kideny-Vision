@@ -1,0 +1,44 @@
+# Local credentials; share placeholders only.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python environments and generated files.
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+.ipynb_checkpoints/
+
+# Local editor, operating system, and application files.
+.vscode/
+.idea/
+.codex/
+.agents/
+.aws/
+.DS_Store
+Thumbs.db
+*.log
+instance/
+uploads/
+data/uploads/
+data/patient_images/
+data/patient_records/
+.github-upload/
+
+# Training outputs and extra checkpoints; retain the app's required weights.
+checkpoints/
+runs/
+models/weights/*
+!models/weights/finetuned_v2_best.pth

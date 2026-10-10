@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KidneyVision</title>
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+    <script defer
+            src="{{ url_for('static', filename='js/script.js', v='20261010-1') }}"></script>
+</head>
+<body>
+    <header class="topbar">
+        <div>
+            <h1>KidneyVision</h1>
+            <p>CT analysis and kidney knowledge assistant</p>
+        </div>
+    </header>
+
+    <main class="workspace">
+        <section class="scan-panel" aria-labelledby="scan-heading">
+            <h2 id="scan-heading">CT scan analysis</h2>
+            <p class="description">Choose a kidney CT image to preview it.</p>
+            <div class="upload-box">
+                <div id="upload-placeholder">
+                    <span class="upload-icon" aria-hidden="true">&#8593;</span>
+                    <h3>Your CT image appears here</h3>
+                    <p>PNG or JPG &middot; Maximum 10 MB</p>
+                </div>
+                <img id="image-preview" alt="Selected CT scan preview" hidden>
+            </div>
+            <input type="file" id="image-input" accept="image/png,image/jpeg" hidden>
+            <div class="upload-actions">
+                <button type="button" id="choose-image" class="button primary">Choose CT image</button>
+                <button type="button" id="analyze-image" class="button secondary" disabled>Analyze image</button>
+            </div>
+            <p id="file-name" class="file-name">No image selected</p>
+            <p id="upload-error" class="error" role="alert"></p>
+
+            <section class="results" aria-labelledby="result-heading">
+                <h2 id="result-heading">Classification result</h2>
+                <p id="result-status" class="description" aria-live="polite">Choose an image to begin.</p>
+                <div class="result-grid">
+                    <div class="result-card" data-condition="stone"><span>Stone</span><strong>&mdash;</strong></div>
+                    <div class="result-card" data-condition="normal"><span>Normal</span><strong>&mdash;</strong></div>
+                    <div class="result-card" data-condition="cyst"><span>Cyst</span><strong>&mdash;</strong></div>
+                    <div class="result-card" data-condition="tumor"><span>Tumor</span><strong>&mdash;</strong></div>
+                </div>
+                <p class="small-note">A model prediction needs clinical review.</p>
+            </section>
+        </section>
+
+        <section class="chat-panel" aria-labelledby="chat-heading">
+            <header class="chat-header">
+                <div class="avatar" aria-hidden="true">K</div>
+                <div>
+                    <h2 id="chat-heading">Kidney Assistant</h2>
+                    <p>Gemini with your knowledge base</p>
+                </div>
+            </header>
+            <div id="chat-messages" class="chat-messages" role="log" aria-live="polite" aria-relevant="additions">
+                <div class="date-label">Today</div>
+                <div class="message incoming">
+                    <p>Hello! You can ask kidney-health questions or upload a CT image for an explanation of its result.</p>
+                    <span class="message-label">Kidney Assistant</span>
+                </div>
+            </div>
+            <div class="chat-composer">
+                <label for="chat-input" class="sr-only">Your kidney-health question</label>
+                <div class="composer-row">
+                    <textarea id="chat-input" rows="1" maxlength="3000"
+                              placeholder="Ask a kidney-health question..." disabled></textarea>
+                    <button type="button" id="send-message" class="send-button"
+                            aria-label="Send message" disabled>&#10148;</button>
+                </div>
+                <p id="chat-status" class="chat-status" aria-live="polite">Connecting...</p>
+            </div>
+        </section>
+    </main>
+    <noscript><p class="error">Enable JavaScript to use image analysis and chat.</p></noscript>
+</body>
+</html>
