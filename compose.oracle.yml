@@ -1,0 +1,11 @@
+services:
+  kidney-vision:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      FLASK_SECRET_KEY: ${FLASK_SECRET_KEY:?Set FLASK_SECRET_KEY in .env}
+      TRUSTED_HOSTS: ${TRUSTED_HOSTS:?Set TRUSTED_HOSTS to the public domain or IP in .env}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-flash-latest}

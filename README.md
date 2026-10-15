@@ -28,6 +28,29 @@ If an activated environment still reports missing modules, use the explicit `.ve
 
 Open <http://127.0.0.1:5000>. Upload a PNG or JPG CT image for classification, or ask a general kidney question. Gemini answers require network access and a working API key; image classification runs locally on CPU.
 
+## Deploy on an Oracle Cloud VM
+
+The repository includes `compose.oracle.yml` for a Linux VM with Docker Compose. It builds the Flask and PyTorch image, runs one Gunicorn worker with four threads so in-memory chat sessions remain in one process, and binds port 8080 to the VM's loopback interface. Put an HTTPS reverse proxy in front of it for browser access.
+
+1. Install Docker Engine and the Compose plugin on the VM, then clone this repository. From the repository root:
+
+   ```sh
+   cp .env.example .env
+   openssl rand -hex 32
+   ```
+
+2. Edit `.env`: set `FLASK_SECRET_KEY` to the generated value, `TRUSTED_HOSTS` to the public domain (or IP address) used in the browser, and `GOOGLE_API_KEY` to enable chat. Leave `GOOGLE_API_KEY` empty if only image classification is needed. Keep `.env` on the VM; Git ignores it.
+3. Start the app and check its health endpoint:
+
+   ```sh
+   docker compose -f compose.oracle.yml up -d --build
+   curl http://127.0.0.1:8080/health
+   ```
+
+4. Configure a reverse proxy on the VM to forward HTTPS requests to `http://127.0.0.1:8080`, preserving the original `Host` header. Allow ports 80 and 443 in the Oracle Cloud ingress rules and the VM firewall. Do not open port 8080 publicly. Check `/health`, `/static/css/style.css`, and `/static/js/script.js` through the public URL.
+
+For updates, run `git pull --ff-only` and `docker compose -f compose.oracle.yml up -d --build` from the repository root. If the domain changes, update `TRUSTED_HOSTS` in `.env` and restart the container. The model checkpoint and knowledge base are already tracked in Git.
+
 ## Deploy to Cloudflare Workers and Containers
 
 This project requires a Cloudflare Container because it runs Flask and native PyTorch. The Worker in `src/index.ts` forwards requests to the Flask container. Flask serves the frontend HTML, CSS, and JavaScript from `templates/` and `static/` and runs the bundled `models/weights/model.pth` checkpoint. The Gemini key is read from a Worker secret and passed only to the container, never to the browser or repository.
