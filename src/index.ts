@@ -2,7 +2,7 @@ import { DurableObject } from "cloudflare:workers";
 
 interface Env {
   KIDNEY_VISION: DurableObjectNamespace<KidneyVisionContainer>;
-  GOOGLE_API_KEY: string;
+  GOOGLE_API_KEY?: string;
   GEMINI_MODEL?: string;
   FLASK_SECRET_KEY?: string;
 }
@@ -34,17 +34,13 @@ export class KidneyVisionContainer extends DurableObject<Env> {
     if (!container) {
       throw new Error("Cloudflare Container binding is unavailable.");
     }
-    if (!this.env.GOOGLE_API_KEY) {
-      throw new Error("Set the GOOGLE_API_KEY Worker secret before deploying.");
-    }
-
     if (!container.running) {
       container.start({
         image: container.images.base,
         instance: "standard-1",
         enableInternet: true,
         env: {
-          GOOGLE_API_KEY: this.env.GOOGLE_API_KEY,
+          GOOGLE_API_KEY: this.env.GOOGLE_API_KEY ?? "",
           GEMINI_MODEL: this.env.GEMINI_MODEL ?? "gemini-flash-latest",
           FLASK_SECRET_KEY: this.env.FLASK_SECRET_KEY ?? "",
           HOST: "0.0.0.0",

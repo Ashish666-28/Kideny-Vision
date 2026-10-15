@@ -159,11 +159,11 @@ def provider_error_message(error):
             "rate limit; an unavailable quota requires an account/model change."
         )
     if "api_key_invalid" in detail or "api key not valid" in detail or "401" in detail:
-        return "Gemini rejected the API key. Check GOOGLE_API_KEY in your local .env file."
+        return "Gemini rejected the API key. Check the server's GOOGLE_API_KEY setting."
     if "403" in detail or "permission_denied" in detail:
         return "Gemini access was denied (403). Check your key's project, restrictions and model access."
     if "404" in detail or "not_found" in detail:
-        return "Gemini model was not found or is unavailable. Check GEMINI_MODEL in .env."
+        return "Gemini model was not found or is unavailable. Check the server's GEMINI_MODEL setting."
     if "timeout" in detail or "timed out" in detail or "deadline" in detail:
         return "Gemini timed out. Check your connection and try again shortly."
     if any(term in detail for term in ("503", "502", "unavailable", "overloaded")):
@@ -194,10 +194,10 @@ class KidneyChatbot:
         load_dotenv(BASE_DIR / ".env", override=False)
         api_key = (os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY") or "").strip()
         if not api_key or api_key.lower().startswith(("your_", "paste_", "replace_")):
-            raise ChatbotError("Add your real GOOGLE_API_KEY to the .env file beside app.py.")
+            raise ChatbotError("Chat is unavailable until GOOGLE_API_KEY is configured on the server.")
         self.model_name = os.getenv("GEMINI_MODEL", "gemini-flash-latest").strip()
         if not self.model_name:
-            raise ChatbotError("GEMINI_MODEL is empty. Set it to gemini-flash-latest in .env.")
+            raise ChatbotError("GEMINI_MODEL is empty. Set a Gemini model in the server environment.")
         try:
             self.model = ChatGoogleGenerativeAI(
                 model=self.model_name,

@@ -1,6 +1,9 @@
 .git
 .github
 .venv
+node_modules
+.wrangler
+.wrangler-local
 __pycache__
 *.py[cod]
 .env

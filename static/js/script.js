@@ -1,4 +1,4 @@
-/* Connect the existing KidneyVision controls to app.py. No API key belongs here. */
+/* Connect KidneyVision to the same-origin API. API keys remain on the server. */
 (() => {
     "use strict";
 
@@ -112,7 +112,7 @@
 
         async function api(path, body = null, multipart = false) {
             const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), body === null ? 15000 : 150000);
+            const timer = setTimeout(() => controller.abort(), body === null ? 90000 : 150000);
             const options = {credentials: "same-origin", cache: "no-store", signal: controller.signal};
             if (body !== null) {
                 options.method = "POST";
@@ -128,11 +128,11 @@
                 let data;
                 try { data = await response.json(); }
                 catch {
-                    throw new Error("Flask did not return API data. Save the updated app.py and restart Flask.");
+                    throw new Error("The server returned an unexpected response. Please try again.");
                 }
                 if (!response.ok || data.ok !== true) {
                     const error = new Error(response.status === 404
-                        ? "The Flask routes are missing. Save the updated file as app.py and restart Flask."
+                        ? "This feature is unavailable on the server. Please try again later."
                         : data.error || "The request failed.");
                     error.status = response.status;
                     throw error;
@@ -140,7 +140,7 @@
                 return data;
             } catch (error) {
                 if (error.name === "AbortError") throw new Error("The request timed out. Wait for it to finish before trying again.");
-                if (error instanceof TypeError) throw new Error("Cannot reach Flask. Keep app.py running and refresh this page.");
+                if (error instanceof TypeError) throw new Error("Cannot reach the server. Check your connection and refresh this page.");
                 throw error;
             } finally { clearTimeout(timer); }
         }
@@ -184,7 +184,7 @@
             try {
                 const data = await api("/api/chat/session");
                 if (typeof data.csrf_token !== "string" || typeof data.scan_id !== "string") {
-                    throw new Error("The Flask backend is out of date. Save the updated app.py and restart Flask.");
+                    throw new Error("The server returned an invalid session. Please refresh this page.");
                 }
                 if (data.busy) throw new Error("A previous request is still running. Wait, then reconnect.");
                 state.csrf = data.csrf_token;

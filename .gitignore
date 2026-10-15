@@ -40,6 +40,8 @@ data/uploads/
 data/patient_images/
 data/patient_records/
 .github-upload/
+.wrangler/
+.wrangler-local/
 
 # Training outputs and extra checkpoints; retain the app's required weights.
 checkpoints/

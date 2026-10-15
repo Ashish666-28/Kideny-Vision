@@ -1,3 +1,4 @@
 # Copy to .dev.vars for local `npm run dev` testing. Do not commit .dev.vars.
+# The image classifier works without a Gemini key; chat requires one.
 GOOGLE_API_KEY=your_google_api_key_here
 FLASK_SECRET_KEY=replace_with_a_long_random_value

@@ -1,4 +1,4 @@
-"""Local Flask API for the trained KidneySwin model and Gemini RAG.
+"""Flask API for the trained KidneySwin model and Gemini RAG.
 
 Copy beside model_predictor.py, custom_swin.py, chatbot.py and knowledge_base.py.
 Keep your existing templates and static files.
@@ -43,7 +43,7 @@ load_dotenv(BASE_DIR / ".env", override=False)
 
 
 class ModelUnavailable(Exception):
-    """A model error safe to show in the local interface."""
+    """A model error safe to show in the interface."""
 
 
 def checked_prediction(raw):
@@ -209,7 +209,7 @@ def create_app(test_config=None, chatbot_factory=None, classifier=None):
             except (OSError, ValueError):
                 return jsonify(
                     ok=False,
-                    error="Chat setup failed. Run knowledge_base.py and check your local .env configuration.",
+                    error="Chat setup failed. Check the knowledge base and server environment.",
                 ), 503
             except Exception as error:
                 # Do not log keys, images, provider traces or patient dialogue.
