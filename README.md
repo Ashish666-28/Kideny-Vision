@@ -28,6 +28,27 @@ If an activated environment still reports missing modules, use the explicit `.ve
 
 Open <http://127.0.0.1:5000>. Upload a PNG or JPG CT image for classification, or ask a general kidney question. Gemini answers require network access and a working API key; image classification runs locally on CPU.
 
+## Deploy to Cloudflare Containers
+
+This project requires a Cloudflare Container because it runs Flask and native PyTorch. A standard Python Worker cannot run the PyTorch dependency. The Worker in `src/index.ts` forwards requests to a Flask container, so Flask renders the template and serves the CSS and JavaScript from `static/`.
+
+1. Install Node.js dependencies: `npm install`.
+2. Authenticate: `npx wrangler login`.
+3. Add secrets interactively. Do not put their values in `wrangler.jsonc` or Git:
+
+   ```powershell
+   npx wrangler secret put GOOGLE_API_KEY
+   npx wrangler secret put FLASK_SECRET_KEY
+   ```
+
+4. Ensure Docker Desktop is running, then deploy:
+
+   ```powershell
+   npm run deploy
+   ```
+
+For a Git-connected Cloudflare Worker Build, set the build command to `npm ci` and the deploy command to `npm run deploy`. The first deploy builds the Docker image and may take several minutes. The Worker name defaults to `kidney-vision`; change `name` in `wrangler.jsonc` if it is already used in your Cloudflare account.
+
 ## Required assets
 
 - `models/weights/model.pth` is the trained checkpoint used by `model_predictor.py` (about 26.4 MiB). It must contain the model state, class names, and configuration matching `custom_swin.py`.

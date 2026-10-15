@@ -1,0 +1,38 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "kidney-vision",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-15",
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "containers": [
+    {
+      "class_name": "KidneyVisionContainer",
+      "scheduling_policy": "durable_object",
+      "images": {
+        "base": {
+          "dockerfile": "./Dockerfile"
+        }
+      }
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "KIDNEY_VISION",
+        "class_name": "KidneyVisionContainer"
+      }
+    ]
+  },
+  "exports": {
+    "KidneyVisionContainer": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    }
+  },
+  "vars": {
+    "GEMINI_MODEL": "gemini-flash-latest"
+  }
+}

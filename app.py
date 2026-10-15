@@ -87,7 +87,7 @@ def create_app(test_config=None, chatbot_factory=None, classifier=None):
         MAX_IMAGE_PIXELS=16_000_000,
         CHAT_IDLE_SECONDS=30 * 60,
         CHAT_MAX_SESSIONS=100,
-        TRUSTED_HOSTS=["127.0.0.1", "localhost"],
+        TRUSTED_HOSTS=["127.0.0.1", "localhost", "container"],
     )
     if test_config:
         app.config.update(test_config)
@@ -270,6 +270,11 @@ def create_app(test_config=None, chatbot_factory=None, classifier=None):
     def home():
         return render_template("index.html")
 
+    @app.get("/health")
+    def health():
+        """Readiness endpoint used by the Cloudflare Container router."""
+        return jsonify(ok=True)
+
     @app.get("/api/chat/session")
     def chat_session():
         return jsonify(ok=True, **bootstrap_session())
@@ -371,4 +376,8 @@ def create_app(test_config=None, chatbot_factory=None, classifier=None):
 app = create_app()
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=False)
+    app.run(
+        host=os.getenv("HOST", "127.0.0.1"),
+        port=int(os.getenv("PORT", "5000")),
+        debug=False,
+    )
