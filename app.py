@@ -31,7 +31,8 @@ from threading import RLock
 from time import monotonic
 
 from dotenv import load_dotenv
-from flask import Flask, abort, jsonify, render_template, request, session
+from flask import Flask, abort, g, jsonify, render_template, request, session
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from PIL import Image, UnidentifiedImageError
 from werkzeug.exceptions import HTTPException
 
@@ -75,6 +76,7 @@ def checked_prediction(raw):
 
 def create_app(test_config=None, chatbot_factory=None, classifier=None):
     app = Flask(__name__)
+    extra_hosts = [host.strip() for host in os.getenv("TRUSTED_HOSTS", "").split(",") if host.strip()]
     app.config.update(
         SECRET_KEY=os.getenv("FLASK_SECRET_KEY") or secrets.token_hex(32),
         SESSION_COOKIE_NAME="kidney_chat_session",
@@ -87,10 +89,14 @@ def create_app(test_config=None, chatbot_factory=None, classifier=None):
         MAX_IMAGE_PIXELS=16_000_000,
         CHAT_IDLE_SECONDS=30 * 60,
         CHAT_MAX_SESSIONS=100,
-        TRUSTED_HOSTS=["127.0.0.1", "localhost", "container"],
+        TRUSTED_HOSTS=["127.0.0.1", "localhost", "container", ".vercel.app", *extra_hosts],
+        STATELESS_SESSIONS=os.getenv("STATELESS_SESSIONS") == "1",
     )
     if test_config:
         app.config.update(test_config)
+    if app.config["STATELESS_SESSIONS"] and not os.getenv("FLASK_SECRET_KEY") and not app.config.get("TESTING"):
+        raise RuntimeError("Set FLASK_SECRET_KEY for stateless deployment sessions.")
+    state_signer = URLSafeTimedSerializer(app.secret_key, salt="kidney-conversation-v1")
 
     records, records_lock, bot_lock = {}, RLock(), RLock()
     shared_bot = None
@@ -137,6 +143,20 @@ def create_app(test_config=None, chatbot_factory=None, classifier=None):
             del records[key]
 
     def bootstrap_session():
+        if app.config["STATELESS_SESSIONS"]:
+            session.setdefault("csrf_token", secrets.token_urlsafe(32))
+            state = signed_state() or new_context()
+            return {
+                "csrf_token": session["csrf_token"], "scan_id": state["scan_id"],
+                "condition": state["condition"], "prediction": state["prediction"],
+                "messages": [
+                    {"role": item["role"], "content": item["content"]}
+                    for item in state["history"] if not item.get("internal")
+                ],
+                "busy": False,
+                "context_source": "classifier" if state["prediction"] else "general",
+                "state_token": state_signer.dumps(state),
+            }
         with records_lock:
             prune_idle()
             browser_id = session.get("browser_id")
@@ -162,6 +182,18 @@ def create_app(test_config=None, chatbot_factory=None, classifier=None):
                 "context_source": "classifier" if state["prediction"] else "general",
             }
 
+    def signed_state():
+        token = request.headers.get("X-Conversation-State", "")
+        if not token or len(token) > 24000:
+            return None
+        try:
+            state = state_signer.loads(token, max_age=app.config["CHAT_IDLE_SECONDS"])
+        except (BadSignature, SignatureExpired):
+            return None
+        if not isinstance(state, dict) or not isinstance(state.get("scan_id"), str):
+            return None
+        return state
+
     def require_csrf():
         supplied = request.headers.get("X-CSRF-Token", "")
         expected = session.get("csrf_token", "")
@@ -181,6 +213,13 @@ def create_app(test_config=None, chatbot_factory=None, classifier=None):
 
     @contextmanager
     def use_conversation():
+        if app.config["STATELESS_SESSIONS"]:
+            state = signed_state()
+            if state is None:
+                abort(409, "Your session expired. Reconnect and try again.")
+            g.conversation_state = state
+            yield state
+            return
         with records_lock:
             prune_idle()
             state = records.get(session.get("browser_id"))
@@ -229,7 +268,7 @@ def create_app(test_config=None, chatbot_factory=None, classifier=None):
             state["history"] = (state["history"] + [
                 {"role": "user", "content": question, "internal": automatic},
                 {"role": "assistant", "content": answer},
-            ])[-8:]
+            ])[-(4 if app.config["STATELESS_SESSIONS"] else 8):]
 
     def reply(state, answer):
         return jsonify(
@@ -343,6 +382,8 @@ def create_app(test_config=None, chatbot_factory=None, classifier=None):
                 history=[dict(item) for item in state["history"]],
             )["answer"]
             remember(state, message, answer)
+            if app.config["STATELESS_SESSIONS"]:
+                state["initial_answer"] = None
             return reply(state, answer)
 
     @app.post("/api/chat/reset")
@@ -368,6 +409,12 @@ def create_app(test_config=None, chatbot_factory=None, classifier=None):
         if request.path.startswith("/api/"):
             response.headers["Cache-Control"] = "no-store"
             response.headers["X-Content-Type-Options"] = "nosniff"
+            state = getattr(g, "conversation_state", None)
+            if app.config["STATELESS_SESSIONS"] and state is not None and response.is_json:
+                payload = response.get_json(silent=True)
+                if isinstance(payload, dict):
+                    payload["state_token"] = state_signer.dumps(state)
+                    response.set_data(app.json.dumps(payload))
         return response
 
     return app

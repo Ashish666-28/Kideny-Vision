@@ -48,3 +48,6 @@ checkpoints/
 runs/
 models/weights/*
 !models/weights/model.pth
+
+.vercel/
+.env.local

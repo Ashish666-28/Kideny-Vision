@@ -51,9 +51,19 @@ The first deploy builds the Docker image and may take several minutes. The Worke
 
 ### Deploy on pushes to GitHub
 
-The repository includes `.github/workflows/deploy.yml`. Add `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as GitHub Actions repository secrets. The token needs permission to deploy Workers and Containers in the target account. Run the first deploy above to create the Worker and set its `GOOGLE_API_KEY` and `FLASK_SECRET_KEY` secrets. Each push to `main` then typechecks the Worker and deploys its code and Docker image. Docker is available on the GitHub hosted Ubuntu runner. Check the workflow result in GitHub Actions and the Worker URL after each deploy.
+The repository includes a manually triggered `.github/workflows/deploy.yml`. Add `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as GitHub Actions repository secrets if you choose to deploy on Cloudflare. The token needs permission to deploy Workers and Containers in the target account. Run the first deploy above to create the Worker and set its `GOOGLE_API_KEY` and `FLASK_SECRET_KEY` secrets. Then run the workflow from GitHub Actions when needed.
 
-If you instead connect this repo through Cloudflare Workers Builds, use `npm ci` as the build command and `npm run deploy` as the production deploy command. Use one automatic deployment path to avoid concurrent deployments. Cloudflare preview uploads do not update the container image.
+If you instead connect this repo through Cloudflare Workers Builds, use `npm ci` as the build command and `npm run deploy` as the production deploy command. Cloudflare preview uploads do not update the container image.
+
+## Deploy to Vercel
+
+The repository includes `Dockerfile.vercel`, which Vercel builds as a container-backed Function. This keeps the trained PyTorch model, Flask backend, knowledge base, HTML, CSS, and JavaScript together. Vercel's large Functions support is required for the PyTorch image; new Vercel projects created after June 30, 2026 are enrolled automatically. Older projects may need `VERCEL_SUPPORT_LARGE_FUNCTIONS=1` in project settings. Fluid compute must be enabled.
+
+1. Import this GitHub repository into a new Vercel project, keeping the repository root as the project root. Vercel detects `Dockerfile.vercel`; do not select a separate framework build command.
+2. In Project Settings > Environment Variables, add `FLASK_SECRET_KEY` as a long random secret for Production and Preview. The container requires this stable key to sign browser sessions across instances. Add `GOOGLE_API_KEY` to enable Gemini chat. `GEMINI_MODEL` is optional and defaults to `gemini-flash-latest`. Do not commit these values. If using a custom domain, set `TRUSTED_HOSTS` to its hostname (or a comma-separated list); Vercel's `*.vercel.app` URLs work by default.
+3. Deploy. Open the resulting URL and check `/health`, `/static/css/style.css`, and `/static/js/script.js`. Then upload a sample CT image and ask a kidney question. Classification uses the bundled `models/weights/model.pth`; chat uses the server-side Gemini key. Connected GitHub projects redeploy on pushes to the production branch.
+
+Vercel limits Function request bodies to 4.5 MB, so the browser resizes images above 4 MB before upload. The page still accepts PNG/JPG files up to 10 MB. Browser conversation state is signed by the server and kept in the tab's session storage, allowing the next request to reach a different Function instance. The state expires after 30 minutes. The app remains a research and education prototype, not a diagnostic service.
 
 ## Required assets
 
@@ -85,6 +95,6 @@ These runtime assets are included. The training notebook referenced by `model_pr
 
 `app.py` serves the API and browser interface in `templates/` and `static/`. `model_predictor.py` handles checkpoint loading and image preprocessing; `custom_swin.py` defines the classifier. `chatbot.py` combines retrieved passages with recent conversation context for Gemini.
 
-The app accepts images up to 10 MiB, processes them in memory, and does not save uploads. Recent conversation history stays in the container process for 30 idle minutes and is lost on restart. Chat requests send the question, recent dialogue, retrieved passages, and any predicted label to Gemini. The deployment routes through one named container instance so browser sessions share that in-memory state.
+The app accepts images up to 10 MiB, processes them in memory, and does not save uploads. On Cloudflare and locally, recent conversation history stays in the process for 30 idle minutes and is lost on restart. On Vercel, conversation state is signed and held in browser session storage so it survives instance changes. Chat requests send the question, recent dialogue, retrieved passages, and any predicted label to Gemini.
 
 The `.gitignore` excludes `.env`, virtual environments, caches, editor settings, local upload/patient-data directories, and extra training checkpoints. Keep API keys and personal medical files out of the repository.

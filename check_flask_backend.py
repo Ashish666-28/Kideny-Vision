@@ -89,6 +89,46 @@ class BackendChecks(unittest.TestCase):
         self.assertIsNone(self.bot.calls[-1][1])
         self.assertEqual(response.get_json()["context_source"], "general")
 
+    def test_stateless_session_survives_another_instance(self):
+        config = {
+            "TESTING": True, "SECRET_KEY": "shared-deployment-secret",
+            "STATELESS_SESSIONS": True,
+        }
+        first = create_app(config, chatbot_factory=lambda: self.bot,
+                           classifier=lambda stream: {
+                               "label": "stone",
+                               "probabilities": {"normal": 0.01, "stone": 0.97,
+                                                 "cyst": 0.01, "tumor": 0.01},
+                           })
+        second = create_app(config, chatbot_factory=lambda: self.bot)
+        first_client, second_client = first.test_client(), second.test_client()
+        initial = first_client.get("/api/chat/session").get_json()
+        cookie = first_client.get_cookie("kidney_chat_session")
+        second_client.set_cookie("kidney_chat_session", cookie.value)
+        headers = {
+            "X-CSRF-Token": initial["csrf_token"],
+            "X-Conversation-State": initial["state_token"],
+        }
+        image = BytesIO()
+        Image.new("L", (32, 24), color=128).save(image, format="PNG")
+        prediction = first_client.post(
+            "/api/predict", data={"image": (BytesIO(image.getvalue()), "test.png")},
+            headers=headers,
+        ).get_json()
+        self.assertEqual(prediction["label"], "stone")
+        headers["X-Conversation-State"] = prediction["state_token"]
+        reply = second_client.post(
+            "/api/chat/message",
+            json={"message": "What does this mean?", "scan_id": prediction["scan_id"]},
+            headers=headers,
+        )
+        self.assertEqual(reply.status_code, 200)
+        self.assertEqual(self.bot.calls[-1][1], "stone")
+        headers["X-Conversation-State"] = reply.get_json()["state_token"]
+        restored = first_client.get("/api/chat/session", headers=headers).get_json()
+        self.assertEqual(restored["prediction"]["label"], "stone")
+        self.assertEqual(len(restored["messages"]), 2)
+
     def test_prediction_does_not_call_gemini(self):
         response = self.upload()
         self.assertEqual(response.status_code, 200)

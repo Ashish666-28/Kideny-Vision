@@ -23,7 +23,11 @@
         }
 
         const labels = ["normal", "stone", "cyst", "tumor"];
-        const state = {csrf: null, scanId: null, ready: false, busy: null, file: null, previewUrl: null};
+        const tokenStore = "kidney-conversation-state";
+        const state = {
+            csrf: null, scanId: null, ready: false, busy: null, file: null, previewUrl: null,
+            token: sessionStorage.getItem(tokenStore),
+        };
         const title = (value) => value[0].toUpperCase() + value.slice(1);
 
         function setProgress(stage) {
@@ -113,10 +117,13 @@
         async function api(path, body = null, multipart = false) {
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), body === null ? 90000 : 150000);
-            const options = {credentials: "same-origin", cache: "no-store", signal: controller.signal};
+            const options = {
+                credentials: "same-origin", cache: "no-store", signal: controller.signal,
+                headers: state.token ? {"X-Conversation-State": state.token} : {},
+            };
             if (body !== null) {
                 options.method = "POST";
-                options.headers = {"X-CSRF-Token": state.csrf || ""};
+                options.headers["X-CSRF-Token"] = state.csrf || "";
                 if (multipart) options.body = body;
                 else {
                     options.headers["Content-Type"] = "application/json";
@@ -129,6 +136,10 @@
                 try { data = await response.json(); }
                 catch {
                     throw new Error("The server returned an unexpected response. Please try again.");
+                }
+                if (typeof data.state_token === "string") {
+                    state.token = data.state_token;
+                    sessionStorage.setItem(tokenStore, state.token);
                 }
                 if (!response.ok || data.ok !== true) {
                     const error = new Error(response.status === 404
@@ -209,6 +220,28 @@
             if (!state.busy) ui.file.click();
         }
 
+        async function uploadFile(file) {
+            // Vercel Functions cap request bodies at 4.5 MB. Keep the model usable
+            // for larger uploads by shrinking only images that exceed 4 MB.
+            if (file.size <= 4 * 1024 * 1024) return file;
+            const bitmap = await createImageBitmap(file);
+            try {
+                let maxSide = 2048;
+                for (const quality of [0.9, 0.75, 0.6]) {
+                    const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+                    const canvas = document.createElement("canvas");
+                    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+                    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+                    canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+                    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+                    if (blob && blob.size <= 4 * 1024 * 1024)
+                        return new File([blob], file.name.replace(/\.(png|jpe?g)$/i, ".jpg"), {type: "image/jpeg"});
+                    maxSide = Math.max(512, Math.floor(maxSide / 2));
+                }
+                throw new Error("This image could not be prepared for upload. Try a smaller image.");
+            } finally { bitmap.close(); }
+        }
+
         ui.choose.addEventListener("click", openImagePicker);
         ui.uploadBox.addEventListener("click", openImagePicker);
         ui.file.addEventListener("change", async () => {
@@ -258,7 +291,8 @@
             let predicted = false;
             try {
                 const form = new FormData();
-                form.append("image", state.file, state.file.name);
+                const prepared = await uploadFile(state.file);
+                form.append("image", prepared, prepared.name);
                 const result = await api("/api/predict", form, true);
                 if (typeof result.scan_id !== "string") throw new Error("The prediction did not include its scan context.");
                 state.scanId = result.scan_id;

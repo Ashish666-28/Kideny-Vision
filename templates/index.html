@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KidneyVision</title>
     <link rel="stylesheet"
-          href="{{ url_for('static', filename='css/style.css', v='20261015-1') }}">
+          href="{{ url_for('static', filename='css/style.css', v='20261015-2') }}">
     <script defer
-            src="{{ url_for('static', filename='js/script.js', v='20261015-1') }}"></script>
+            src="{{ url_for('static', filename='js/script.js', v='20261015-2') }}"></script>
 </head>
 <body>
     <header class="topbar">
@@ -40,7 +40,7 @@
                         <span id="upload-placeholder">
                             <span class="upload-icon" aria-hidden="true">↑</span>
                             <span class="upload-title">Your CT image appears here</span>
-                            <span class="upload-subtitle">Choose a PNG or JPG image, up to 10 MB</span>
+                            <span class="upload-subtitle">Choose a PNG or JPG image, up to 10 MB. Large images are resized for upload.</span>
                         </span>
                         <img id="image-preview" alt="Selected CT scan preview" hidden>
                         <span class="preview-glow" aria-hidden="true"></span>
