@@ -117,7 +117,7 @@ def create_app(test_config=None, chatbot_factory=None, classifier=None):
             app.logger.error("Image model failed (%s)", type(error).__name__)
             raise ModelUnavailable(
                 "Could not run your trained model. Run model_predictor.py with a CT image "
-                "and check custom_swin.py and models/weights/finetuned_v2_best.pth."
+                "and check custom_swin.py and models/weights/model.pth."
             ) from None
 
     def new_context():

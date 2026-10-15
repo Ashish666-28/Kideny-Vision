@@ -5,15 +5,18 @@
     async function init() {
         const byId = (id) => document.getElementById(id);
         const ui = {
-            file: byId("image-input"), choose: byId("choose-image"),
+            file: byId("image-input"), choose: byId("choose-image"), uploadBox: byId("upload-box"),
             analyze: byId("analyze-image"), preview: byId("image-preview"),
-            placeholder: byId("upload-placeholder"), filename: byId("file-name"),
+            placeholder: byId("upload-placeholder"), changeHint: byId("upload-change"), filename: byId("file-name"),
             uploadError: byId("upload-error"), result: byId("result-status"),
+            scanPanel: document.querySelector(".scan-panel"),
+            results: document.querySelector(".results"), resultBody: byId("result-body"),
+            resultClass: byId("result-class"), resultScore: byId("result-score"),
+            steps: [...document.querySelectorAll(".scan-steps li")],
             messages: byId("chat-messages"), input: byId("chat-input"),
             send: byId("send-message"), status: document.querySelector(".chat-status"),
-            cards: [...document.querySelectorAll(".result-card")],
         };
-        if (Object.values(ui).some((item) => !item) || ui.cards.length !== 4) {
+        if (Object.values(ui).some((item) => !item) || ui.steps.length !== 3) {
             console.error("KidneyVision: the page controls do not match script.js.");
             if (ui.status) ui.status.textContent = "Page setup failed. Use the matching index.html and script.js.";
             return;
@@ -23,9 +26,20 @@
         const state = {csrf: null, scanId: null, ready: false, busy: null, file: null, previewUrl: null};
         const title = (value) => value[0].toUpperCase() + value.slice(1);
 
+        function setProgress(stage) {
+            const order = ["selected", "analyzing", "complete"];
+            const current = order.indexOf(stage);
+            ui.scanPanel.classList.toggle("is-analyzing", stage === "analyzing");
+            ui.steps.forEach((step, index) => {
+                step.classList.toggle("is-current", index === current);
+                step.classList.toggle("is-done", current >= 0 && index < current);
+            });
+        }
+
         function controls() {
             const busy = Boolean(state.busy);
             ui.choose.disabled = busy;
+            ui.uploadBox.disabled = busy;
             ui.file.disabled = busy;
             ui.analyze.disabled = busy || !state.ready || !state.file;
             ui.analyze.classList.toggle("primary", !ui.analyze.disabled);
@@ -74,14 +88,12 @@
         }
 
         function clearScores(text = "Choose an image to begin.") {
-            for (const card of ui.cards) {
-                card.querySelector("strong").textContent = "\u2014";
-                card.classList.remove("is-winner");
-                card.style.removeProperty("border-color");
-                card.style.removeProperty("background-color");
-                card.removeAttribute("aria-label");
-            }
+            ui.resultBody.hidden = true;
+            delete ui.results.dataset.label;
+            ui.resultClass.textContent = "\u2014";
+            ui.resultScore.textContent = "\u2014";
             ui.result.textContent = text;
+            setProgress(state.file ? "selected" : null);
         }
 
         function showPrediction(data, previous = false) {
@@ -90,18 +102,12 @@
                     data.probabilities[name] >= 0 && data.probabilities[name] <= 1)) {
                 throw new Error("The server returned an invalid prediction.");
             }
-            for (const card of ui.cards) {
-                const name = card.dataset.condition || card.querySelector("span").textContent.trim().toLowerCase();
-                const score = (data.probabilities[name] * 100).toFixed(2) + "%";
-                const isWinner = name === data.label;
-                card.querySelector("strong").textContent = score;
-                card.classList.toggle("is-winner", isWinner);
-                card.style.borderColor = isWinner ? "#128c7e" : "";
-                card.style.backgroundColor = isWinner ? "#e7f7ef" : "";
-                card.setAttribute("aria-label", title(name) + ": " + score + (isWinner ? ", predicted class" : ""));
-            }
-            ui.result.textContent = (previous ? "Previous scan: " : "Prediction: ") + title(data.label) +
-                ". Model score: " + (data.probabilities[data.label] * 100).toFixed(2) + "%.";
+            ui.results.dataset.label = data.label;
+            ui.resultClass.textContent = title(data.label);
+            ui.resultScore.textContent = (data.probabilities[data.label] * 100).toFixed(2) + "%";
+            ui.resultBody.hidden = false;
+            ui.result.textContent = previous ? "Previous scan result" : "The model has analyzed your CT image.";
+            setProgress("complete");
         }
 
         async function api(path, body = null, multipart = false) {
@@ -172,6 +178,7 @@
                 ui.preview.removeAttribute("src");
                 ui.preview.hidden = true;
                 ui.placeholder.hidden = false;
+                ui.changeHint.hidden = true;
                 ui.filename.textContent = "No image selected";
             }
             try {
@@ -198,7 +205,12 @@
             finally { state.busy = null; controls(); }
         }
 
-        ui.choose.addEventListener("click", () => { if (!state.busy) ui.file.click(); });
+        function openImagePicker() {
+            if (!state.busy) ui.file.click();
+        }
+
+        ui.choose.addEventListener("click", openImagePicker);
+        ui.uploadBox.addEventListener("click", openImagePicker);
         ui.file.addEventListener("change", async () => {
             const file = ui.file.files[0];
             if (!file || state.busy) return;
@@ -214,6 +226,7 @@
             ui.preview.src = state.previewUrl;
             ui.preview.hidden = false;
             ui.placeholder.hidden = true;
+            ui.changeHint.hidden = false;
             ui.filename.textContent = file.name;
             ui.input.value = "";
             clearScores("Image selected. Click Analyze image.");
@@ -238,6 +251,7 @@
             controls();
             ui.uploadError.textContent = "";
             clearScores("Analyzing your CT image...");
+            setProgress("analyzing");
             resetMessages();
             status("Analyzing the image...");
             let typing = null;
@@ -315,6 +329,21 @@
         window.addEventListener("beforeunload", () => {
             if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
         });
+        if (window.matchMedia("(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)").matches) {
+            document.querySelectorAll(".tilt-surface").forEach((surface) => {
+                surface.addEventListener("pointermove", (event) => {
+                    const bounds = surface.getBoundingClientRect();
+                    const horizontal = (event.clientX - bounds.left) / bounds.width - 0.5;
+                    const vertical = (event.clientY - bounds.top) / bounds.height - 0.5;
+                    surface.style.setProperty("--rotate-x", (-vertical * 3).toFixed(2) + "deg");
+                    surface.style.setProperty("--rotate-y", (horizontal * 3).toFixed(2) + "deg");
+                });
+                surface.addEventListener("pointerleave", () => {
+                    surface.style.removeProperty("--rotate-x");
+                    surface.style.removeProperty("--rotate-y");
+                });
+            });
+        }
         controls();
         await connect();
     }

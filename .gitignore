@@ -41,4 +41,4 @@ data/patient_records/
 checkpoints/
 runs/
 models/weights/*
-!models/weights/finetuned_v2_best.pth
+!models/weights/model.pth

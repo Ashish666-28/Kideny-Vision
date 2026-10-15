@@ -11,13 +11,16 @@ Use Python 3.12 and run these commands from the project folder in Windows PowerS
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+.\.venv\Scripts\python.exe -m pip install "torch>=2.6,<3" --index-url https://download.pytorch.org/whl/cpu
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 ```
 
 If you already have a configured `.env`, keep it. Edit the local `.env` to set `GOOGLE_API_KEY` to your own Gemini key. `GEMINI_API_KEY` is also accepted; `GOOGLE_API_KEY` takes priority. `GEMINI_MODEL` and `FLASK_SECRET_KEY` are optional. The application uses `gemini-flash-latest` by default and generates a Flask session secret when none is configured.
 
-The requirements preserve the existing environment's pinned versions. The additional package index supplies CPU PyTorch wheels, as documented in the [PyTorch installation instructions](https://pytorch.org/get-started/previous-versions/). A fresh installation has not been verified; wheel availability depends on your Python version, operating system, and the pinned releases.
+The requirements list the packages imported by the application and terminal tools; pip installs their transitive dependencies automatically. Version ranges allow pip to select compatible releases within the specified major versions. Install CPU PyTorch first using its dedicated index, as documented in the [PyTorch installation instructions](https://pytorch.org/get-started/locally/).
+
+If an activated environment still reports missing modules, use the explicit `.venv` Python commands above so installation and execution use the same interpreter. If that interpreter reports `No Python at ...`, install Python 3.12 and recreate the virtual environment before installing dependencies. Import names differ from package names: `dotenv` comes from `python-dotenv`, `PIL` from `Pillow`, `docx` from `python-docx`, and `sklearn` from `scikit-learn`.
 
 ```powershell
 .\.venv\Scripts\python.exe app.py
@@ -27,7 +30,7 @@ Open <http://127.0.0.1:5000>. Upload a PNG or JPG CT image for classification, o
 
 ## Required assets
 
-- `models/weights/finetuned_v2_best.pth` is the trained checkpoint used by `model_predictor.py` (about 26.4 MiB). It must contain the model state, class names, and configuration matching `custom_swin.py`.
+- `models/weights/model.pth` is the trained checkpoint used by `model_predictor.py` (about 26.4 MiB). It must contain the model state, class names, and configuration matching `custom_swin.py`.
 - `data/raw/kidney_knowledge.docx` is the structured educational knowledge base used by `knowledge_base.py`. Retrieval builds a TF-IDF index in memory; no separate index-generation step is required.
 
 These runtime assets are included. The training notebook referenced by `model_predictor.py` and the original training image dataset are not included.

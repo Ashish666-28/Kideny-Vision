@@ -24,7 +24,7 @@ from custom_swin import KidneySwin
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent
-DEFAULT_WEIGHTS = PROJECT_ROOT / "models" / "weights" / "finetuned_v2_best.pth"
+DEFAULT_WEIGHTS = PROJECT_ROOT / "models" / "weights" / "model.pth"
 SUPPORTED_CLASSES = {"normal", "stone", "cyst", "tumor"}
 IMAGE_SIZE = 224
 

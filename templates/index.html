@@ -5,52 +5,80 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KidneyVision</title>
     <link rel="stylesheet"
-          href="{{ url_for('static', filename='css/style.css') }}">
+          href="{{ url_for('static', filename='css/style.css', v='20261011-6') }}">
     <script defer
-            src="{{ url_for('static', filename='js/script.js', v='20261010-1') }}"></script>
+            src="{{ url_for('static', filename='js/script.js', v='20261011-3') }}"></script>
 </head>
 <body>
     <header class="topbar">
-        <div>
-            <h1>KidneyVision</h1>
-            <p>CT analysis and kidney knowledge assistant</p>
+        <div class="brand">
+            <div>
+                <h1>KidneyVision</h1>
+                <p>CT analysis and kidney knowledge assistant</p>
+            </div>
         </div>
+        <span class="topbar-badge"><span aria-hidden="true"></span>Local model analysis</span>
     </header>
 
     <main class="workspace">
-        <section class="scan-panel" aria-labelledby="scan-heading">
-            <h2 id="scan-heading">CT scan analysis</h2>
-            <p class="description">Choose a kidney CT image to preview it.</p>
-            <div class="upload-box">
-                <div id="upload-placeholder">
-                    <span class="upload-icon" aria-hidden="true">&#8593;</span>
-                    <h3>Your CT image appears here</h3>
-                    <p>PNG or JPG &middot; Maximum 10 MB</p>
+        <div class="scan-column">
+            <section class="scan-panel tilt-surface" aria-labelledby="scan-heading">
+                <header class="panel-heading">
+                    <span class="panel-icon" aria-hidden="true">▧</span>
+                    <div>
+                        <h2 id="scan-heading">CT scan analysis</h2>
+                        <p>Upload a kidney CT image to analyze</p>
+                    </div>
+                </header>
+                <div class="scan-content">
+                    <ol class="scan-steps" aria-label="Analysis progress">
+                        <li class="is-current" data-step="selected"><span>1</span>Image selected</li>
+                        <li data-step="analyzing"><span>2</span>Analyzing</li>
+                        <li data-step="complete"><span>3</span>Result ready</li>
+                    </ol>
+                    <button type="button" id="upload-box" class="upload-box" aria-label="Choose or replace CT image">
+                        <span id="upload-placeholder">
+                            <span class="upload-icon" aria-hidden="true">↑</span>
+                            <span class="upload-title">Your CT image appears here</span>
+                            <span class="upload-subtitle">Choose a PNG or JPG image, up to 10 MB</span>
+                        </span>
+                        <img id="image-preview" alt="Selected CT scan preview" hidden>
+                        <span class="preview-glow" aria-hidden="true"></span>
+                        <span id="upload-change" class="upload-change" hidden>Click to replace image</span>
+                    </button>
+                    <input type="file" id="image-input" accept="image/png,image/jpeg" hidden>
+                    <div class="upload-actions">
+                        <button type="button" id="choose-image" class="button secondary">Choose CT image</button>
+                        <button type="button" id="analyze-image" class="button primary" disabled>Analyze image <span aria-hidden="true">→</span></button>
+                    </div>
+                    <p id="file-name" class="file-name">No image selected</p>
+                    <p id="upload-error" class="error" role="alert"></p>
                 </div>
-                <img id="image-preview" alt="Selected CT scan preview" hidden>
-            </div>
-            <input type="file" id="image-input" accept="image/png,image/jpeg" hidden>
-            <div class="upload-actions">
-                <button type="button" id="choose-image" class="button primary">Choose CT image</button>
-                <button type="button" id="analyze-image" class="button secondary" disabled>Analyze image</button>
-            </div>
-            <p id="file-name" class="file-name">No image selected</p>
-            <p id="upload-error" class="error" role="alert"></p>
-
-            <section class="results" aria-labelledby="result-heading">
-                <h2 id="result-heading">Classification result</h2>
-                <p id="result-status" class="description" aria-live="polite">Choose an image to begin.</p>
-                <div class="result-grid">
-                    <div class="result-card" data-condition="stone"><span>Stone</span><strong>&mdash;</strong></div>
-                    <div class="result-card" data-condition="normal"><span>Normal</span><strong>&mdash;</strong></div>
-                    <div class="result-card" data-condition="cyst"><span>Cyst</span><strong>&mdash;</strong></div>
-                    <div class="result-card" data-condition="tumor"><span>Tumor</span><strong>&mdash;</strong></div>
-                </div>
-                <p class="small-note">A model prediction needs clinical review.</p>
             </section>
-        </section>
 
-        <section class="chat-panel" aria-labelledby="chat-heading">
+            <section class="results tilt-surface" aria-labelledby="result-heading">
+                <header class="result-heading">
+                    <span class="result-heading-icon" aria-hidden="true">▤</span>
+                    <div>
+                        <h2 id="result-heading">Classification result</h2>
+                        <p id="result-status" aria-live="polite">Your result will appear after analysis.</p>
+                    </div>
+                </header>
+                <div class="result-body" id="result-body" hidden>
+                    <div class="result-primary">
+                        <span>Predicted class</span>
+                        <strong id="result-class">—</strong>
+                    </div>
+                    <div class="result-score">
+                        <span>Model score</span>
+                        <strong id="result-score">—</strong>
+                    </div>
+                </div>
+                <p class="small-note">Model scores are uncalibrated. A prediction needs clinical review.</p>
+            </section>
+        </div>
+
+        <section class="chat-panel tilt-surface" aria-labelledby="chat-heading">
             <header class="chat-header">
                 <div class="avatar" aria-hidden="true">K</div>
                 <div>
