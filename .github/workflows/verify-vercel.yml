@@ -15,6 +15,17 @@ jobs:
       - name: Build the Vercel image
         run: docker build -f Dockerfile.vercel -t kidney-vision-vercel .
       - name: Check backend routes and stateless sessions
-        run: docker run --rm --entrypoint python kidney-vision-vercel check_flask_backend.py
+        run: |
+          set +e
+          docker run --rm --entrypoint python kidney-vision-vercel check_flask_backend.py > backend-check.log 2>&1
+          status=$?
+          cat backend-check.log
+          if [ "$status" -ne 0 ]; then
+            detail="$(tail -n 35 backend-check.log)"
+            detail="${detail//'%'/'%25'}"
+            detail="${detail//$'\n'/'%0A'}"
+            printf '::error title=Backend checks failed::%s\n' "$detail"
+          fi
+          exit "$status"
       - name: Load the trained model checkpoint
         run: docker run --rm --entrypoint python kidney-vision-vercel model_predictor.py
