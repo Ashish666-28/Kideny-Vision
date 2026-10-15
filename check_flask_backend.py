@@ -55,7 +55,8 @@ class BackendChecks(unittest.TestCase):
                     "probabilities": scores}
 
         self.app = create_app(
-            {"TESTING": True, "SECRET_KEY": "isolated-unit-test-key"},
+            {"TESTING": True, "SECRET_KEY": "isolated-unit-test-key",
+             "STATELESS_SESSIONS": False},
             chatbot_factory=lambda: self.bot, classifier=classifier,
         )
         # Expected failure checks should not print misleading server error logs.
