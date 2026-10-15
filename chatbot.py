@@ -205,7 +205,7 @@ class KidneyChatbot:
                 vertexai=False,
                 max_tokens=4096,
                 timeout=60,
-                max_retries=1,
+                max_retries=4,
             )
         except Exception as error:
             raise ChatbotError(provider_error_message(error)) from None
